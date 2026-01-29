@@ -27,7 +27,9 @@ const login = catchAsync(async (req, res, next) => {
 
 // Forget password send otp
 const forgotPassword = catchAsync(async (req, res, next) => {
-  await otp.sendEmailOTP(req.body.email, 'email', 'd-1c767f05cc6249708e590c9298915074');
+  const email = req.body.email;
+
+  await otp.sendEmailOTP(email, 'email', 'd-1c767f05cc6249708e590c9298915074');
   res.status(200).send({ message: 'OTP Sent to your email address' });
 });
 
