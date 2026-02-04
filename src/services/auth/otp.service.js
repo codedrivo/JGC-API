@@ -60,7 +60,6 @@ const sendEmailOTP = async (userEmail, type, tempID) => {
       identifier: userEmail,
       type: type,
     });
-    console.log(otp)
     return email.sendSendgridEmail(
       userEmail,
       'Email Verification',

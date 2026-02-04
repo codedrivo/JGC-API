@@ -62,7 +62,7 @@ const resetAdmin = Joi.object({
 const verify = Joi.object({
   email: Joi.string().email(),
   phone: Joi.string().pattern(/^[0-9]{10}$/),
-  otpdata: Joi.string().length(4).required(),
+  otp: Joi.string().length(4).required(),
 })
   .xor("email", "phone") // only one allowed
   .required();

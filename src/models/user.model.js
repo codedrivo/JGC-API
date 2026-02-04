@@ -50,12 +50,12 @@ const userSchema = new mongoose.Schema(
       trim: true
     },
 
-    customerLevel: {
+    clientLevel: {
       type: String,
       trim: true
     },
 
-    customerStatus: {
+    clientStatus: {
       type: String,
       trim: true
     },

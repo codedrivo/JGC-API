@@ -1,7 +1,8 @@
 const service = require('../../services/auth/auth.service');
 const token = require('../../services/auth/token.service');
 const emailService = require('../../services/email/email.service');
-const otp = require('../../services/auth/otp.service');
+const otps = require('../../services/auth/otp.service');
+const User = require('../../models/user.model');
 const catchAsync = require('../../helpers/asyncErrorHandler');
 const ApiError = require('../../helpers/apiErrorConverter');
 
@@ -27,31 +28,41 @@ const login = catchAsync(async (req, res, next) => {
 
 // Forget password send otp
 const forgotPassword = catchAsync(async (req, res, next) => {
-  const email = req.body.email;
-
-  await otp.sendEmailOTP(email, 'email', 'd-1c767f05cc6249708e590c9298915074');
-  res.status(200).send({ message: 'OTP Sent to your email address' });
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(404).send({
+      message: 'No account found with this email address',
+    });
+  }
+  await otps.sendEmailOTP(
+    email,
+    'email',
+    'd-c60beffa1f45430eb5ed565009adfef6'
+  );
+  res.status(200).send({
+    message: 'OTP sent to your email address',
+  });
 });
+
 
 // verify email send otp
 const verifyEmailOTP = catchAsync(async (req, res) => {
-  await otp.sendEmailOTP(req.body.email, 'email', 'd-1c767f05cc6249708e590c9298915074');
+  await otps.sendEmailOTP(req.body.email, 'email', 'd-1c767f05cc6249708e590c9298915074');
   res.status(200).send({ message: 'OTP Sent to your email address' });
 });
 
 // verify phone send otp
 const verifyPhoneOTP = catchAsync(async (req, res) => {
-  await otp.sendPhoneOTP(req.body.phone, 'phone');
+  await otps.sendPhoneOTP(req.body.phone, 'phone');
   res.status(200).send({ message: 'OTP Sent to your phone' });
 });
 
 // Otp verify
 const verify = catchAsync(async (req, res, next) => {
-  const { email, phone, otpdata } = req.body;
-
+  const { email, phone, otp } = req.body;
   let identifier;
   let type;
-
   if (email) {
     identifier = email;
     type = 'email';
@@ -61,9 +72,7 @@ const verify = catchAsync(async (req, res, next) => {
   } else {
     throw new ApiError('Something is wrong', 400);
   }
-
-  await otp.checkVerifyOtp(identifier, otpdata, type);
-
+  await otps.checkVerifyOtp(identifier, otp, type);
   res.status(200).send({
     message: 'OTP verified successfully',
   });
@@ -115,7 +124,7 @@ const forgotPasswordResend = catchAsync(async (req, res, next) => {
   if (!user) {
     throw new ApiError('User Not Found', 404);
   }
-  await otp.generateOtp(user, 'resend');
+  await otps.generateOtp(user, 'resend');
   res.status(200).send({ message: 'OTP Sent to the email address' });
 });
 
