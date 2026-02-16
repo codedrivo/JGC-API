@@ -3,77 +3,66 @@ const validator = require('validator');
 const { toJSON, paginate } = require('./plugins');
 const bcrypt = require('bcrypt');
 const ApiError = require('../helpers/apiErrorConverter');
+const ReportType = require('./reportType.model');
 
-// ASSIGNED REPORT SCHEMA
 const assignedReportSchema = new mongoose.Schema(
   {
-    reportId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Report",
+    reportTypeId: {
+      type: mongoose.Types.ObjectId,
+      ref: ReportType,
       required: true,
     },
 
     startDate: {
       type: Date,
-      required: true,
     },
 
     viewDate: {
       type: Date,
-      required: true,
     },
 
     endDate: {
       type: Date,
-      required: true,
-    },
-
-    status: {
-      type: String,
-      enum: ["active", "expired"],
-      default: "active",
     },
   },
+  { _id: false }
 );
 
-/* ================= USER ================= */
 const userSchema = new mongoose.Schema(
   {
-    /*Judy Admin*/
+    /* ============== CLIENT FIELDS (role: client) ============== */
     companyName: {
       type: String,
-      trim: true
+      trim: true,
     },
 
     customerID: {
       type: String,
-      trim: true
+      trim: true,
     },
 
     clientLevel: {
       type: String,
-      trim: true
+      enum: ["SINGLE", "UP_TO_3", "ENTERPRISE"],
+      trim: true,
     },
 
     clientStatus: {
       type: String,
-      trim: true
+      enum: ["ACTIVE", "INACTIVE"],
+      default: "ACTIVE",
+      trim: true,
     },
 
-    /*Judy User*/
+    /* ============== COMMON PERSON FIELDS ============== */
     firstName: {
       type: String,
-      trim: true
+      trim: true,
     },
 
     lastName: {
       type: String,
-      trim: true
-    },
-
-    positionTitle: {
-      type: String,
-      trim: true
+      trim: true,
     },
 
     email: {
@@ -88,31 +77,50 @@ const userSchema = new mongoose.Schema(
       },
     },
 
-    role: {
-      type: String,
-      enum: ["admin", "user"],
-      default: "user",
-    },
-
     password: {
       type: String,
-      trim: true,
       minlength: 8,
       private: true,
+      // ❌ trim should NOT be used for passwords
     },
 
-    reports: {
+    role: {
+      type: String,
+      enum: ["client", "admin", "user"],
+      required: true,
+      trim: true,
+    },
+
+    status: {
+      type: String,
+      enum: ["ACTIVE", "ARCHIVED"],
+      default: "ACTIVE",
+      trim: true,
+    },
+
+    /* ============== USER FIELDS (admin / user) ============== */
+    positionTitle: {
+      type: String,
+      trim: true,
+    },
+
+    clientId: {
+      type: mongoose.Types.ObjectId,
+      ref: "User",
+    },
+
+    reportAccess: {
       type: [assignedReportSchema],
       default: [],
     },
-
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-userSchema.index({ username: 'text', email: 'text' });
+
+/* ================= INDEX ================= */
+userSchema.index({ email: 1 });
+userSchema.index({ clientId: 1, role: 1 });
 
 // add plugin that converts mongoose to json
 userSchema.plugin(toJSON);
@@ -123,6 +131,7 @@ userSchema.plugin(paginate);
 // check is user password is matching
 userSchema.methods.isPasswordMatch = async function (password) {
   const user = this;
+  console.log(await bcrypt.compare(password, user.password));
   return bcrypt.compare(password, user.password);
 };
 

@@ -57,6 +57,7 @@ const addUser = async (userData) => {
   return user;
 };
 
+
 const getUserById = (id) => {
   return User.findById(id);
 };
@@ -160,5 +161,5 @@ module.exports = {
   userVerification,
   userBlockUnblock,
   getUsersCount,
-  userInvitations
+  userInvitations,
 };

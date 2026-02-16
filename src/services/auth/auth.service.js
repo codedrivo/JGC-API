@@ -2,7 +2,11 @@ const User = require('../../models/user.model');
 const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const ApiError = require('../../helpers/apiErrorConverter');
+const email = require('../email/email.service');
 
+const generatePassword = () => {
+  return Math.random().toString(36).slice(-8) + '@1A';
+};
 // Create new user
 const createUser = async (data) => {
   const checkEmail = await User.findOne({ email: data.email });
@@ -109,6 +113,87 @@ const listUser = async (currentUserId) => {
   return userList;
 };
 
+
+/* ================= GET CLIENT ================= */
+const getClientById = async (id) => {
+  const client = await User.findOne({
+    _id: id,
+    role: 'client',
+  });
+
+  if (!client) throw new ApiError('Client not found', 404);
+  return client;
+};
+
+const listSubUsers = async (
+
+  page = 1,
+  limit = 10,
+  clientId,
+) => {
+  const query = { clientId, role: "user" };
+
+
+
+  const skip = (page - 1) * limit;
+
+  const users = await User.find(query)
+    .skip(skip)
+    .limit(Number(limit))
+    .sort({ createdAt: -1 });
+
+  const total = await User.countDocuments(query);
+
+  return {
+    users,
+    total,
+    page: Number(page),
+    totalPages: Math.ceil(total / limit),
+  };
+};
+
+const addSubUser = async (clientId, data) => {
+  const client = await User.findById(clientId);
+  if (!client) throw new ApiError("Client not found", 404);
+
+  const password = generatePassword();
+
+  const user = await User.create({
+    ...data,
+    role: "user",
+    clientId,
+    password: password,
+  });
+  await email.sendSendgridEmail(
+    data.email,
+    'Your Client Account',
+    { otp: password },
+    'd-c60beffa1f45430eb5ed565009adfef6',
+  );
+
+  return user;
+};
+
+const removeSubUser = async (clientId, userId) => {
+  const client = await User.findById(clientId);
+  if (!client) {
+    throw new ApiError("Client not found", 404);
+  }
+
+  const deletedUser = await User.findOneAndDelete({
+    _id: userId,
+    clientId: clientId, // 🔥 ownership check
+    role: "user",
+  });
+
+  if (!deletedUser) {
+    throw new ApiError("Sub user not found or not authorized", 404);
+  }
+
+  return deletedUser;
+};
+
+
 module.exports = {
   createUser,
   loginUser,
@@ -121,5 +206,9 @@ module.exports = {
   getUserDataById,
   checkUserExistById,
   updateUser,
-  listUser
+  listUser,
+  getClientById,
+  listSubUsers,
+  addSubUser,
+  removeSubUser
 };

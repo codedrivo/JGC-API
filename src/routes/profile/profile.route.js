@@ -5,9 +5,25 @@ const validationSchema = require('../../validators/profile.validator');
 const validator = require('express-joi-validation').createValidator({
   passError: true,
 });
-const upload = require('../../middlewares/multer.middleware');
 
 router.use(auth('user', true));
+
+router.get(
+  '/my-account',
+  auth(['client', 'user']), // ✅ multi role
+  controller.myAccount
+);
+
+router.post(
+  '/add-user',
+  auth(['client']), // ✅ multi role
+  controller.addSubUser
+);
+router.delete(
+  '/remove-user/:userId',
+  auth(['client']), // ✅ multi role
+  controller.removeSubUser
+);
 
 router.get(
   '/get-user/:id',
