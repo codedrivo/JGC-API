@@ -68,6 +68,7 @@ const singleUserId = Joi.object({
   page: Joi.string().required(),
 });
 
+
 module.exports = {
   pagination,
   addUser,

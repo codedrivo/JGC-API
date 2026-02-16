@@ -15,6 +15,7 @@ const listUser = catchAsync(async (req, res, next) => {
   res.status(200).send({ status: 200, users });
 });
 
+
 const addUser = catchAsync(async (req, res) => {
   const data = { ...req.body };
   if (req.file && req.file.location) {
@@ -91,5 +92,5 @@ module.exports = {
   deleteUser,
   userVerification,
   userBlockUnblock,
-  getInvitations
+  getInvitations,
 };
