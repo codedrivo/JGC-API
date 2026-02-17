@@ -10,18 +10,18 @@ router.use(auth('user', true));
 
 router.get(
   '/my-account',
-  auth(['client', 'user']), // ✅ multi role
+  auth(['client', 'user']),
   controller.myAccount
 );
 
 router.post(
   '/add-user',
-  auth(['client']), // ✅ multi role
+  auth(['client']),
   controller.addSubUser
 );
 router.delete(
   '/remove-user/:userId',
-  auth(['client']), // ✅ multi role
+  auth(['client']),
   controller.removeSubUser
 );
 
@@ -39,6 +39,11 @@ router.patch(
   '/change-password',
   validator.body(validationSchema.passchange),
   controller.passwordChange,
+);
+
+router.patch(
+  '/reset-password-user/:userId',
+  controller.passwordReset,
 );
 
 router.get('/', controller.getProfile);

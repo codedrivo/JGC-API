@@ -120,7 +120,7 @@ const addSubUser = catchAsync(async (req, res) => {
     req.user._id,
     req.body
   );
-  res.status(200).json({ status: 200, data });
+  res.status(200).json({ status: 200, data, message: 'User added successfully' });
 });
 
 const removeSubUser = catchAsync(async (req, res) => {
@@ -128,8 +128,19 @@ const removeSubUser = catchAsync(async (req, res) => {
     req.user._id,
     req.params.userId
   );
-  res.status(200).json({ status: 200, data });
+  res.status(200).json({ status: 200, data, message: 'User deleted successfully' });
 });
+
+const passwordReset = catchAsync(async (req, res) => {
+  const data = await service.passwordResetUser(
+    req.user._id,
+    req.params.userId
+  );
+  res.status(200).json({ status: 200, data, message: 'New password sent successfully' });
+});
+
+
+
 module.exports = {
   deleteAccount,
   passwordChange,
@@ -141,5 +152,6 @@ module.exports = {
   edituser,
   myAccount,
   addSubUser,
-  removeSubUser
+  removeSubUser,
+  passwordReset
 };

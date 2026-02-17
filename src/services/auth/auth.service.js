@@ -132,11 +132,7 @@ const listSubUsers = async (
   clientId,
 ) => {
   const query = { clientId, role: "user" };
-
-
-
   const skip = (page - 1) * limit;
-
   const users = await User.find(query)
     .skip(skip)
     .limit(Number(limit))
@@ -155,9 +151,7 @@ const listSubUsers = async (
 const addSubUser = async (clientId, data) => {
   const client = await User.findById(clientId);
   if (!client) throw new ApiError("Client not found", 404);
-
   const password = generatePassword();
-
   const user = await User.create({
     ...data,
     role: "user",
@@ -167,8 +161,8 @@ const addSubUser = async (clientId, data) => {
   await email.sendSendgridEmail(
     data.email,
     'Your Client Account',
-    { otp: password },
-    'd-c60beffa1f45430eb5ed565009adfef6',
+    { email: data.email, pass: password },
+    'd-38ddd55afb7e47d994f7f73ca1027050',
   );
 
   return user;
@@ -193,6 +187,31 @@ const removeSubUser = async (clientId, userId) => {
   return deletedUser;
 };
 
+const passwordResetUser = async (clientId, userId) => {
+  const password = generatePassword();
+  const [userD, client] = await Promise.all([
+    User.findById(userId),
+    User.findById(clientId),
+  ]);
+  if (!userD) throw new ApiError("User not found", 404);
+  if (!client) throw new ApiError("Client not found", 404);
+  const hashedPassword = await bcrypt.hash(password, 8);
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    {
+      password: hashedPassword,
+      clientId,
+    },
+    { new: true }
+  );
+  await email.sendSendgridEmail(
+    userD.email,
+    "Your Client Account",
+    { email: userD.email, pass: password },
+    "d-38ddd55afb7e47d994f7f73ca1027050"
+  );
+  return updatedUser;
+};
 
 module.exports = {
   createUser,
@@ -210,5 +229,6 @@ module.exports = {
   getClientById,
   listSubUsers,
   addSubUser,
-  removeSubUser
+  removeSubUser,
+  passwordResetUser
 };

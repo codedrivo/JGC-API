@@ -67,19 +67,17 @@ const clientListFind = async (
 /* ================= CREATE CLIENT ================= */
 const createClient = async (data) => {
     const password = generatePassword();
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     const client = await Client.create({
         ...data,
-        role: 'client',          // ✅ IMPORTANT
+        role: 'client',
         password: password,
     });
 
     await email.sendSendgridEmail(
         client.email,
         'Your Client Account',
-        { otp: password },
-        'd-c60beffa1f45430eb5ed565009adfef6',
+        { email: client.email, pass: password },
+        'd-38ddd55afb7e47d994f7f73ca1027050',
     );
     return client;
 };
@@ -197,7 +195,6 @@ const addSubUser = async (clientId, data) => {
     const client = await Client.findById(clientId);
     if (!client) throw new ApiError("Client not found", 404);
     const password = generatePassword();
-    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await Client.create({
         ...data,
@@ -208,8 +205,8 @@ const addSubUser = async (clientId, data) => {
     await email.sendSendgridEmail(
         data.email,
         'Your Client Account',
-        { otp: password },
-        'd-c60beffa1f45430eb5ed565009adfef6',
+        { email: data.email, pass: password },
+        'd-38ddd55afb7e47d994f7f73ca1027050',
     );
 
     return user;

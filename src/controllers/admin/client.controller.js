@@ -23,7 +23,6 @@ const listClient = catchAsync(async (req, res) => {
 /* ================= CREATE CLIENT ================= */
 const createClient = catchAsync(async (req, res) => {
     const client = await service.createClient(req.body);
-
     res.status(200).json({
         status: 200,
         message: 'Client created successfully',
