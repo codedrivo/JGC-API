@@ -93,7 +93,7 @@ const userSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["ACTIVE", "ARCHIVED"],
+      enum: ["ACTIVE", "INACTIVE"],
       default: "ACTIVE",
       trim: true,
     },

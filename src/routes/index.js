@@ -26,7 +26,7 @@ router.use('/reportType', reportType)
 router.use('/admin', adminAuth);
 router.use('/admin/dashboard', adminDashboard);
 router.use('/admin/profile', adminProfile);
-router.use('/admin/user-management', userManagement);
+router.use('/admin/user', userManagement);
 router.use('/admin/client', clientManagement);
 router.use('/admin/setting', adminSetting);
 

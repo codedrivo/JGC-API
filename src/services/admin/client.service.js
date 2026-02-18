@@ -11,7 +11,6 @@ const generatePassword = () => {
 };
 
 /* ================= LIST CLIENTS ================= */
-/* ================= LIST CLIENTS ================= */
 const clientListFind = async (
     limit = 10,
     page = 1,

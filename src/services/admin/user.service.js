@@ -1,165 +1,149 @@
 const User = require('../../models/user.model');
 const ApiError = require('../../helpers/apiErrorConverter');
-
 const mongoose = require('mongoose');
 const { http } = require('winston');
+const ExcelJS = require("exceljs");
 const email = require('../email/email.service');
 
+/* ================= LIST USERS ================= */
 const userListFind = async (
-  id,
   limit = 10,
   page = 1,
-  searchQuery = '',
-  role = '',
+  search = '',
+  status = '',
+  subscriptions = []
 ) => {
   try {
-    const query = {};
-    if (searchQuery) {
-      const sanitizedSearchTerm = searchQuery.replace(/"/g, '');
+    const query = { role: 'user' };
+    /* SEARCH */
+    if (search) {
+      const sanitized = search.replace(/"/g, '');
       query.$or = [
-        { firstName: { $regex: sanitizedSearchTerm, $options: 'i' } },
-        { lastName: { $regex: sanitizedSearchTerm, $options: 'i' } },
-        { email: { $regex: sanitizedSearchTerm, $options: 'i' } },
+        { firstName: { $regex: sanitized, $options: 'i' } },
+        { lastName: { $regex: sanitized, $options: 'i' } },
+        { email: { $regex: sanitized, $options: 'i' } },
+        { positionTitle: { $regex: sanitized, $options: 'i' } },
       ];
     }
 
-    if (role) {
-      query.role = role;
+    /* STATUS FILTER */
+    if (status && status !== 'All') {
+      query.status = status;
     }
 
-    /* if (id) {
-       query._id = { $ne: id };
-     }*/
+    /* SUBSCRIPTION FILTER (reportTypeId) */
+    if (subscriptions.length) {
+      query['reportAccess.reportTypeId'] = {
+        $in: subscriptions.map((id) => new mongoose.Types.ObjectId(id)),
+      };
+    }
 
     const skip = (page - 1) * limit;
-    const totalItems = await User.find(query).countDocuments();
+    const totalItems = await User.countDocuments(query);
+
     const users = await User.find(query)
+      .populate('reportAccess.reportTypeId')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    const userList = {
+    return {
       users,
       page,
       limit,
       totalPages: Math.ceil(totalItems / limit),
       totalResults: totalItems,
     };
-
-    return userList;
   } catch (e) {
-    throw new ApiError(e.message, 404);
+    throw new ApiError(e.message, 400);
   }
 };
 
-const addUser = async (userData) => {
-  const user = await User.create(userData);
-  return user;
-};
-
-
-const getUserById = (id) => {
-  return User.findById(id);
-};
-
-const editUser = async (id) => {
+/* ================= EXPORT CLIENTS ================= */
+const exportUsers = async (
+  search = '',
+  status = '',
+  subscriptions = []
+) => {
   try {
-    const user = await getUserById(id);
+    const query = { role: 'user' };
 
-    return user;
-  } catch (e) {
-    throw new ApiError(e.message, 404);
-  }
-};
-
-const updateUser = async (id, data) => {
-  return User.findByIdAndUpdate({ _id: new mongoose.Types.ObjectId(id) }, data);
-};
-
-const deleteUser = async (id) => {
-  try {
-    await User.findByIdAndDelete(id);
-  } catch (e) {
-    throw new ApiError(e.message, 404);
-  }
-};
-
-const userVerification = async (id, status) => {
-  const userData = await User.findByIdAndUpdate(
-    id,
-    {
-      $set: { isVerfied: status },
-    },
-    { new: true },
-  );
-  return userData;
-};
-
-const userBlockUnblock = async (id, status) => {
-  const userData = await User.findByIdAndUpdate(
-    id,
-    {
-      $set: { isActive: status },
-    },
-    { new: true },
-  );
-  return userData;
-};
-
-// get number of users
-const getUsersCount = async () => {
-  const totalUsers = await User.countDocuments({
-    role: { $not: { $eq: 'admin' } },
-    isActive: true,
-  });
-  return totalUsers;
-};
-
-const userInvitations = async (id, limit = 10, page = 1, searchQuery = '') => {
-  try {
-    const query = {};
-    if (searchQuery) {
-      const sanitizedSearchTerm = searchQuery.replace(/"/g, '');
+    /* SEARCH */
+    if (search) {
+      const sanitized = search.replace(/"/g, '');
       query.$or = [
-        { description: { $regex: sanitizedSearchTerm, $options: 'i' } },
-        { transportationMoney: { $regex: sanitizedSearchTerm, $options: 'i' } },
+        { firstName: { $regex: sanitized, $options: 'i' } },
+        { lastName: { $regex: sanitized, $options: 'i' } },
+        { email: { $regex: sanitized, $options: 'i' } },
+        { positionTitle: { $regex: sanitized, $options: 'i' } },
       ];
     }
 
-    if (id) {
-      query.userId = id;
+    /* STATUS */
+    if (status && status !== 'All') {
+      query.status = status;
     }
 
-    const skip = (page - 1) * limit;
-    const totalItems = await Invitations.find(query).countDocuments();
+    /* SUBSCRIPTIONS */
+    if (subscriptions.length) {
+      query['reportAccess.reportTypeId'] = {
+        $in: subscriptions.map(
+          (id) => new mongoose.Types.ObjectId(id)
+        ),
+      };
+    }
 
-    const invitations = await Invitations.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const users = await User.find(query)
+      .populate('reportAccess.reportTypeId')
+      .populate('clientId')
+      .sort({ createdAt: -1 });
 
-    const invitationList = {
-      invitations,
-      page,
-      limit,
-      totalPages: Math.ceil(totalItems / limit),
-      totalResults: totalItems,
-    };
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Clients');
 
-    return invitationList;
+    worksheet.columns = [
+      { header: 'Company', key: 'companyName', width: 25 },
+      { header: 'Contact Name', key: 'firstName', width: 20 },
+      { header: 'Email', key: 'email', width: 25 },
+      { header: 'Subscription', key: 'subscription', width: 30 },
+      { header: 'License', key: 'license', width: 15 },
+      { header: 'Status', key: 'status', width: 15 },
+      { header: 'First Name', key: 'status', width: 15 },
+      { header: 'Last Name', key: 'status', width: 15 },
+      { header: 'Position', key: 'status', width: 15 },
+      { header: 'User Email', key: 'status', width: 15 },
+    ];
+
+    users.forEach((usr) => {
+      worksheet.addRow({
+        companyName: usr.clientId.companyName,
+        firstName: usr.clientId.firstName,
+        email: usr.clientId.email,
+        subscription: usr.clientId.reportAccess
+          ?.map((r) => r.reportTypeId?.label)
+          .join(', '),
+        license:
+          usr.clientId.clientLevel === 'SINGLE'
+            ? 'SINGLE USER'
+            : usr.clientId.clientLevel === 'UP_TO_3'
+              ? 'UP TO 3 USERS'
+              : 'Enterprise',
+        status: usr.clientId.clientStatus,
+
+        firstName: usr.firstName,
+        lastName: usr.lastName,
+        email: usr.email,
+        position: usr.positionTitle,
+      });
+    });
+
+    return workbook;
   } catch (e) {
-    throw new ApiError(e.message, 404);
+    throw new ApiError(e.message, 400);
   }
 };
 
 module.exports = {
   userListFind,
-  addUser,
-  editUser,
-  updateUser,
-  deleteUser,
-  userVerification,
-  userBlockUnblock,
-  getUsersCount,
-  userInvitations,
+  exportUsers
 };
