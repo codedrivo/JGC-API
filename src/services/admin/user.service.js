@@ -43,6 +43,10 @@ const userListFind = async (
 
     const users = await User.find(query)
       .populate('reportAccess.reportTypeId')
+      .populate({
+        path: "clientId",
+        select: "firstName lastName companyName email status"
+      })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
