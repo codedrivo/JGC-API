@@ -13,7 +13,7 @@ const upload = multer({
     contentType: multerS3.AUTO_CONTENT_TYPE,
     key: function (req, file, cb) {
       const extension = file.originalname.split('.').pop(); // Get the extension from the original file name
-      const uniqueKey = 'CTG/' + Date.now().toString() + '.' + extension; // Use a unique key with the extension
+      const uniqueKey = Date.now().toString() + '.' + extension; // Use a unique key with the extension
       cb(null, uniqueKey);
     },
   }),

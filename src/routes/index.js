@@ -7,6 +7,7 @@ const settings = require('./site-settings/sitesettings.route');
 const pages = require('../routes/page.route');
 
 const reportType = require('../routes/reportType.route');
+const report = require('../routes/admin/report.route');
 
 //admin profile
 const adminProfile = require('./admin/profile.route');
@@ -20,7 +21,8 @@ router.use('/auth', authRouter);
 router.use('/profile', Profile);
 router.use('/settings', settings);
 router.use('/pages', pages);
-router.use('/reportType', reportType)
+router.use('/reportType', reportType);
+router.use('/report', report)
 
 // all admin route
 router.use('/admin', adminAuth);
