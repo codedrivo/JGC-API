@@ -26,7 +26,7 @@ const publishReport = async (req) => {
 
     // Step 2: Call Ask Judy async ingest API
     const ingestResponse = await axios.post(
-        `${process.env.JUDY_API}/api/ingest/enqueue-pdf`,
+        `${process.env.JUDY_API}/api/upload/test-pdf`,
         formData,
         {
             headers: formData.getHeaders(),
@@ -55,11 +55,9 @@ const publishReport = async (req) => {
 
 const getIngestStatus = async (reportId) => {
     const report = await Report.findById(reportId);
-
     if (!report || !report.ingestJobId) {
         throw new Error("Ingest job not found");
     }
-
     const response = await axios.get(
         `${process.env.JUDY_API}/api/ingest/jobs/${report.ingestJobId}`,
         {

@@ -11,7 +11,6 @@ router.use(auth("admin"));
 
 router.post(
     "/publish-report",
-    upload.single("file"),
     validator.body(validationSchema.publishReport),
     controller.publishReport
 );
