@@ -7,26 +7,39 @@ const reportSchema = new mongoose.Schema(
             ref: "ReportType",
             required: true,
         },
+
         publicationDate: {
             type: Date,
             required: true,
         },
-        reportFileUrl: {
+
+        // From Judy API
+        family: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+
+        year: {
+            type: Number,
+            required: true,
+        },
+
+        filename: {
             type: String,
             required: true,
         },
-        ingestJobId: {
-            type: String,
-            default: "",
+
+        reportFileUrl: {
+            type: String, // s3_uri or converted https URL
+            required: true,
         },
-        ingestStatus: {
+
+        // Optional: track upload status
+        uploadStatus: {
             type: String,
-            enum: ["queued", "processing", "retrying", "succeeded", "failed"],
-            default: "queued",
-        },
-        ingestAttempts: {
-            type: Number,
-            default: 0,
+            enum: ["uploaded", "failed"],
+            default: "uploaded",
         },
     },
     { timestamps: true }

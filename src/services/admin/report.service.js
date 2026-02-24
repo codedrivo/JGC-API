@@ -1,57 +1,101 @@
 const axios = require("axios");
 const FormData = require("form-data");
 const Report = require("../../models/report.model");
-const fs = require("fs");
+const ReportType = require("../../models/reportType.model");
+const ApiError = require('../../helpers/apiErrorConverter');
 
-const publishReport = async (req) => {
-    const { reportTypeId, publicationDate, family, year } = req.body;
-    const file = req.file;
 
-    // 5MB
-    if (file.size > 5 * 1024 * 1024) {
-        throw new Error("File exceeds 5MB limit");
-    }
+const publishReport = async (file, body) => {
+    try {
+        const { reportTypeId, publicationDate } = body;
 
-    // Step 1: Prepare FormData for Judy
-    const formData = new FormData();
-    formData.append("family", family);
-    formData.append("year", year);
-
-    // Since using multer-s3, we need file from S3 location
-    const fileStream = await axios.get(file.location, {
-        responseType: "stream",
-    });
-
-    formData.append("file", fileStream.data, file.originalname);
-
-    // Step 2: Call Ask Judy async ingest API
-    const ingestResponse = await axios.post(
-        `${process.env.JUDY_API}/api/upload/test-pdf`,
-        formData,
-        {
-            headers: formData.getHeaders(),
-            auth: {
-                username: process.env.JUDY_USER,
-                password: process.env.JUDY_PASS,
-            },
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity,
+        // Validate file
+        if (!file) {
+            throw new ApiError("File is required", 400);
         }
-    );
 
-    const { job_id, status } = ingestResponse.data;
+        if (file.size > 5 * 1024 * 1024) {
+            throw new ApiError("File exceeds 5MB limit", 400);
+        }
 
-    // Step 3: Save report
-    const report = await Report.create({
-        reportTypeId,
-        publicationDate,
-        reportFileUrl: file.location,
-        ingestJobId: job_id,
-        ingestStatus: status,
-    });
+        if (!reportTypeId || !publicationDate) {
+            throw new ApiError("Report type and publication date are required", 400);
+        }
 
-    return report;
+        // ✅ Get ReportType
+        const reportType = await ReportType.findById(reportTypeId);
+
+        if (!reportType) {
+            throw new ApiError("Invalid report type", 404);
+        }
+
+        if (!reportType.shortName) {
+            throw new ApiError("Report type shortName not configured", 400);
+        }
+
+        // ✅ Extract family + year
+        const family = reportType.shortName;
+
+        const dateObj = new Date(publicationDate);
+        if (isNaN(dateObj)) {
+            throw new ApiError("Invalid publication date", 400);
+        }
+
+        const year = dateObj.getFullYear();
+
+        // Prepare FormData
+        const formData = new FormData();
+        formData.append("family", family);
+        formData.append("year", year);
+        formData.append("file", file.buffer, {
+            filename: file.originalname,
+            contentType: file.mimetype,
+        });
+
+        // Call Judy API
+        const ingestResponse = await axios.post(
+            `${process.env.JUDY_API}/api/upload/test-pdf`,
+            formData,
+            {
+                headers: {
+                    ...formData.getHeaders(),
+                },
+                auth: {
+                    username: process.env.JUDY_USER,
+                    password: process.env.JUDY_PASS,
+                },
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity,
+            }
+        );
+
+        const { ok, filename, s3_uri } = ingestResponse.data;
+
+        if (!ok || !s3_uri) {
+            throw new ApiError("Judy upload failed", 502);
+        }
+
+        // Save to DB
+        return Report.create({
+            reportTypeId,
+            publicationDate: dateObj,
+            family,
+            year,
+            filename,
+            reportFileUrl: s3_uri,
+            uploadStatus: "uploaded",
+        });
+
+    } catch (error) {
+        console.log(error);
+
+        throw new ApiError(
+            error.message || "Judy API Error",
+            500
+        );
+    }
 };
+
 
 const getIngestStatus = async (reportId) => {
     const report = await Report.findById(reportId);

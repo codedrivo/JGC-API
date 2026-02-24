@@ -8,6 +8,9 @@ const reportTypeSchema = new mongoose.Schema(
             required: true,
             trim: true
         },
+        shortName: {
+            type: String
+        },
         description: {
             type: String
         },
