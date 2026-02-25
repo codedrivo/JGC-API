@@ -4,7 +4,6 @@ const Report = require("../../models/report.model");
 const ReportType = require("../../models/reportType.model");
 const ApiError = require('../../helpers/apiErrorConverter');
 
-
 const publishReport = async (file, body) => {
     try {
         const { reportTypeId, publicationDate } = body;
@@ -12,6 +11,13 @@ const publishReport = async (file, body) => {
         // Validate file
         if (!file) {
             throw new ApiError("File is required", 400);
+        }
+        const isPdf =
+            file.mimetype === "application/pdf" &&
+            file.originalname.toLowerCase().endsWith(".pdf");
+
+        if (!isPdf) {
+            throw new ApiError("Only PDF files are allowed", 400);
         }
 
         if (file.size > 5 * 1024 * 1024) {
@@ -75,6 +81,9 @@ const publishReport = async (file, body) => {
             throw new ApiError("Judy upload failed", 502);
         }
 
+        // Convert S3 URI to CloudFront URL
+        const cloudfrontUrl = convertS3ToCloudFrontUrl(s3_uri);
+
         // Save to DB
         return Report.create({
             reportTypeId,
@@ -82,7 +91,7 @@ const publishReport = async (file, body) => {
             family,
             year,
             filename,
-            reportFileUrl: s3_uri,
+            reportFileUrl: cloudfrontUrl, // CDN URL (not raw S3)
             uploadStatus: "uploaded",
         });
 
@@ -96,6 +105,16 @@ const publishReport = async (file, body) => {
     }
 };
 
+const convertS3ToCloudFrontUrl = (s3Uri) => {
+    if (!s3Uri) return null;
+
+    const cloudfrontBase = process.env.CLOUDFRONT_URL;
+
+    // Remove s3://bucket-name/
+    const key = s3Uri.replace(/^s3:\/\/[^/]+\//, "");
+
+    return `${cloudfrontBase}/${key}`;
+};
 
 const getIngestStatus = async (reportId) => {
     const report = await Report.findById(reportId);
